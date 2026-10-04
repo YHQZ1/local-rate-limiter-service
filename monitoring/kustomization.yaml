@@ -1,0 +1,30 @@
+# Apply everything with:  kubectl apply -k monitoring/
+# The config files below are turned into ConfigMaps (with a content hash in the
+# name), so editing a file and re-applying rolls the pod onto the new config.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - prometheus/rbac.yaml
+  - prometheus/deployment.yaml
+  - grafana/deployment.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    namespace: monitoring
+    files:
+      - prometheus/prometheus.yml
+      - prometheus/alerts.yml
+  - name: grafana-datasources
+    namespace: monitoring
+    files:
+      - grafana/datasources.yaml
+  - name: grafana-dashboard-provider
+    namespace: monitoring
+    files:
+      - grafana/dashboard-provider.yaml
+  - name: grafana-dashboards
+    namespace: monitoring
+    files:
+      - grafana/dashboards/ratelimiter.json

@@ -42,13 +42,13 @@ done
 
 `key` is required (1 to 256 bytes). `cost` is optional (default 1, at most `BURST`).
 
-| Status | Meaning |
-| ------ | ------- |
-| `200` | Allowed. |
-| `429` | Denied. `Retry-After` header gives whole seconds to wait. |
-| `400` | Bad JSON, missing/oversized key, or invalid cost. |
-| `413` | Body larger than 1 KiB. |
-| `503` | Too many tracked keys; retry shortly. |
+| Status | Meaning                                                   |
+| ------ | --------------------------------------------------------- |
+| `200`  | Allowed.                                                  |
+| `429`  | Denied. `Retry-After` header gives whole seconds to wait. |
+| `400`  | Bad JSON, missing/oversized key, or invalid cost.         |
+| `413`  | Body larger than 1 KiB.                                   |
+| `503`  | Too many tracked keys; retry shortly.                     |
 
 Body (200 and 429):
 
@@ -60,20 +60,20 @@ Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` on 429.
 
 ### Operational endpoints
 
-| Path | Description |
-| ---- | ----------- |
-| `GET /` | Built-in web UI |
-| `GET /health` | `{"status":"ok"}`, for liveness/readiness probes |
-| `GET /config` | `{"rate_per_sec":5,"burst":10}`, the limits in force |
-| `GET /version` | `{"version":"..."}` |
-| `GET /metrics` | Prometheus metrics |
+| Path           | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| `GET /`        | Built-in web UI                                      |
+| `GET /health`  | `{"status":"ok"}`, for liveness/readiness probes     |
+| `GET /config`  | `{"rate_per_sec":5,"burst":10}`, the limits in force |
+| `GET /version` | `{"version":"..."}`                                  |
+| `GET /metrics` | Prometheus metrics                                   |
 
 ## Web UI
 
 `GET /` serves a single self-contained page (embedded in the binary: no extra container, no CDN, no CORS). It has two halves:
 
 - **Playground**: send one request, fire a burst, or auto-send at N requests/sec for any key. A gauge shows the key's bucket draining and refilling, and a log lists the last responses.
-- **Live service view**: reads `/metrics` once a second and shows allowed/denied per second, a 60 s throughput chart, p95 latency of `/check`, active keys, total checks and the 5xx count. It covers *all* clients, so run a load script and watch it react. The version badge at the top makes a rolling update visible.
+- **Live service view**: reads `/metrics` once a second and shows allowed/denied per second, a 60 s throughput chart, p95 latency of `/check`, active keys, total checks and the 5xx count. It covers _all_ clients, so run a load script and watch it react. The version badge at the top makes a rolling update visible.
 
 It is a demo and debugging aid, not a replacement for a real Prometheus + Grafana setup. The page is flat, dark and uses the [Inter](https://rsms.me/inter/) typeface, embedded in the binary (SIL Open Font License, text in `internal/server/web/OFL-Inter.txt`).
 
@@ -81,16 +81,16 @@ It is a demo and debugging aid, not a replacement for a real Prometheus + Grafan
 
 All via environment variables.
 
-| Variable | Default | Meaning |
-| -------- | ------- | ------- |
-| `PORT` | `8080` | Listen port |
-| `RATE_PER_SEC` | `5` | Tokens refilled per second, per key |
-| `BURST` | `10` | Bucket size, per key |
-| `MAX_KEYS` | `100000` | Distinct keys tracked at once |
-| `CLEANUP_INTERVAL` | `30s` | How often idle keys are swept |
-| `SHUTDOWN_TIMEOUT` | `10s` | Max time to finish in-flight requests on SIGTERM |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `APP_VERSION` | build-time value (`dev`) | Reported by `/version` and `/metrics` |
+| Variable           | Default                  | Meaning                                          |
+| ------------------ | ------------------------ | ------------------------------------------------ |
+| `PORT`             | `8080`                   | Listen port                                      |
+| `RATE_PER_SEC`     | `5`                      | Tokens refilled per second, per key              |
+| `BURST`            | `10`                     | Bucket size, per key                             |
+| `MAX_KEYS`         | `100000`                 | Distinct keys tracked at once                    |
+| `CLEANUP_INTERVAL` | `30s`                    | How often idle keys are swept                    |
+| `SHUTDOWN_TIMEOUT` | `10s`                    | Max time to finish in-flight requests on SIGTERM |
+| `LOG_LEVEL`        | `info`                   | `debug`, `info`, `warn`, `error`                 |
+| `APP_VERSION`      | build-time value (`dev`) | Reported by `/version` and `/metrics`            |
 
 Invalid values stop startup with a message naming every bad variable.
 
@@ -98,15 +98,15 @@ Invalid values stop startup with a message naming every bad variable.
 
 Logs are JSON on stdout, one line per request (`/health` and `/metrics` are logged at `debug` to keep probe noise out).
 
-| Metric | Type | Notes |
-| ------ | ---- | ----- |
-| `ratelimiter_checks_total{result}` | counter | `allowed`, `denied`, `error` |
-| `ratelimiter_http_requests_total{method,path,code}` | counter | Error rate = `code=~"5.."` over total |
-| `ratelimiter_http_request_duration_seconds{path}` | histogram | Latency by route |
-| `ratelimiter_active_keys` | gauge | Keys currently tracked |
-| `ratelimiter_evicted_keys_total` | counter | Idle keys dropped |
-| `ratelimiter_build_info{version}` | gauge | Always 1 |
-| `go_*`, `process_*` | | Runtime and process stats (uptime via `process_start_time_seconds`) |
+| Metric                                              | Type      | Notes                                                               |
+| --------------------------------------------------- | --------- | ------------------------------------------------------------------- |
+| `ratelimiter_checks_total{result}`                  | counter   | `allowed`, `denied`, `error`                                        |
+| `ratelimiter_http_requests_total{method,path,code}` | counter   | Error rate = `code=~"5.."` over total                               |
+| `ratelimiter_http_request_duration_seconds{path}`   | histogram | Latency by route                                                    |
+| `ratelimiter_active_keys`                           | gauge     | Keys currently tracked                                              |
+| `ratelimiter_evicted_keys_total`                    | counter   | Idle keys dropped                                                   |
+| `ratelimiter_build_info{version}`                   | gauge     | Always 1                                                            |
+| `go_*`, `process_*`                                 |           | Runtime and process stats (uptime via `process_start_time_seconds`) |
 
 Note that a `429` is the limiter working as intended, not a server error: it counts toward `denied`, not toward the 5xx error rate.
 
@@ -127,13 +127,13 @@ GitHub Actions, defined in [`.github/workflows/ci-cd.yml`](.github/workflows/ci-
 
 (Vector version: [`docs/pipeline.svg`](docs/pipeline.svg).)
 
-| Stage | Runs on | What it does |
-| ----- | ------- | ------------ |
-| Lint | every event | `gofmt` check, `go vet`, `go mod tidy -diff` |
-| Test | every event | `go test -race` with coverage (summary on the run page, `coverage.out` as an artifact) |
-| Build | after Lint + Test | Static `linux/amd64` and `linux/arm64` binaries with the version stamped in; uploaded as artifacts |
+| Stage           | Runs on           | What it does                                                                                                                                                         |
+| --------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lint            | every event       | `gofmt` check, `go vet`, `go mod tidy -diff`                                                                                                                         |
+| Test            | every event       | `go test -race` with coverage (summary on the run page, `coverage.out` as an artifact)                                                                               |
+| Build           | after Lint + Test | Static `linux/amd64` and `linux/arm64` binaries with the version stamped in; uploaded as artifacts                                                                   |
 | Container image | after Lint + Test | Builds the image, runs it and smoke-tests it with `scripts/smoke.sh`, then builds both architectures. Pushes to GHCR on `main` and tags only, never on pull requests |
-| GitHub release | tags `v*` only | Creates a release with the binaries, `checksums.txt` and the image reference |
+| GitHub release  | tags `v*` only    | Creates a release with the binaries, `checksums.txt` and the image reference                                                                                         |
 
 Image tags on `ghcr.io/yhqz1/local-rate-limiter-service`: `sha-<short>` for every push, `main` and `latest` for the default branch, and `1.2.3` / `1.2` for release tags. The version baked into the binary (`/version`) comes from `git describe`, so a tagged build reports its tag.
 
@@ -157,6 +157,10 @@ Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets 
 ## Docker and Kubernetes
 
 The image is built by the `Dockerfile` (static binary on distroless, non-root, about 18 MB) and published by CI. [`k8s/`](k8s/) has the manifests (Namespace, ConfigMap, Deployment, Service) plus a walkthrough of a zero-downtime rolling update, a bad release that Kubernetes refuses to complete, and rollbacks, with measured results. See [`k8s/README.md`](k8s/README.md).
+
+## Monitoring (Prometheus and Grafana)
+
+[`monitoring/`](monitoring/) installs Prometheus and Grafana into the cluster with plain manifests: pod discovery with scoped RBAC, four alert rules, and a provisioned dashboard covering uptime, availability, latency and error rate, plus a panel that shows rolling updates happening. A traffic script generates normal, abusive and error load so the dashboard has something to show. See [`monitoring/README.md`](monitoring/README.md), including the screenshots.
 
 ## Configuration management (Ansible)
 
