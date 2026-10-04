@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 640" width="1120" height="640" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b5bdb"/>
+    </marker>
+  </defs>
+  <rect width="1120" height="640" fill="#ffffff"/>
+
+  <text x="30" y="40" font-size="22" font-weight="700" fill="#3b5bdb">Docker image and Kubernetes rolling update</text>
+
+  <!-- ============ Docker ============ -->
+  <text x="30" y="82" font-size="12" font-weight="700" fill="#667085" letter-spacing="1.2">DOCKER: TWO-STAGE BUILD</text>
+
+  <rect x="30" y="94" width="330" height="76" rx="12" fill="#eef2ff" stroke="#3b5bdb" stroke-width="2"/>
+  <text x="195" y="124" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">Build stage</text>
+  <text x="195" y="146" font-size="12.5" fill="#4a5163" text-anchor="middle">Go compiler · static binary (CGO off)</text>
+  <text x="195" y="162" font-size="12.5" fill="#4a5163" text-anchor="middle">cross-compiled for amd64 + arm64</text>
+
+  <path d="M360,132 H418" stroke="#3b5bdb" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="389" y="124" font-size="11" fill="#667085" text-anchor="middle">copy</text>
+
+  <rect x="420" y="94" width="330" height="76" rx="12" fill="#eef2ff" stroke="#3b5bdb" stroke-width="2"/>
+  <text x="585" y="124" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">Final stage</text>
+  <text x="585" y="146" font-size="12.5" fill="#4a5163" text-anchor="middle">distroless base · non-root user</text>
+  <text x="585" y="162" font-size="12.5" fill="#4a5163" text-anchor="middle">no shell, no package manager</text>
+
+  <path d="M750,132 H808" stroke="#3b5bdb" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <rect x="810" y="94" width="280" height="76" rx="12" fill="#e6f7ef" stroke="#2f9e6b" stroke-width="2"/>
+  <text x="950" y="124" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">Image: 17.7 MB</text>
+  <text x="950" y="146" font-size="12.5" fill="#4a5163" text-anchor="middle">one image, both architectures</text>
+  <text x="950" y="162" font-size="12.5" fill="#4a5163" text-anchor="middle">published to GHCR by the pipeline</text>
+
+  <!-- ============ Kubernetes ============ -->
+  <text x="30" y="224" font-size="12" font-weight="700" fill="#667085" letter-spacing="1.2">KUBERNETES: ROLLING UPDATE, 3 REPLICAS</text>
+
+  <!-- frame backgrounds -->
+  <g fill="#f6f8fd" stroke="#d6dcee" stroke-width="1.5">
+    <rect x="30" y="238" width="250" height="262" rx="12"/>
+    <rect x="300" y="238" width="250" height="262" rx="12"/>
+    <rect x="570" y="238" width="250" height="262" rx="12"/>
+    <rect x="840" y="238" width="250" height="262" rx="12"/>
+  </g>
+
+  <!-- frame titles -->
+  <g font-size="14" font-weight="700" fill="#16191d">
+    <text x="46" y="266">1 · Running</text>
+    <text x="316" y="266">2 · Surge</text>
+    <text x="586" y="266">3 · Swap</text>
+    <text x="856" y="266">4 · Done</text>
+  </g>
+
+  <!-- service bars -->
+  <g fill="#dbe4ff" stroke="#3b5bdb" stroke-width="1.8">
+    <rect x="46" y="282" width="218" height="32" rx="8"/>
+    <rect x="316" y="282" width="218" height="32" rx="8"/>
+    <rect x="586" y="282" width="218" height="32" rx="8"/>
+    <rect x="856" y="282" width="218" height="32" rx="8"/>
+  </g>
+  <g font-size="12.5" font-weight="600" fill="#16191d" text-anchor="middle">
+    <text x="155" y="303">Service</text>
+    <text x="425" y="303">Service</text>
+    <text x="695" y="303">Service</text>
+    <text x="965" y="303">Service</text>
+  </g>
+
+  <!-- frame 1 pods: v1 v1 v1 -->
+  <g stroke-width="1.8">
+    <rect x="46"  y="350" width="62" height="62" rx="10" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="118" y="350" width="62" height="62" rx="10" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="190" y="350" width="62" height="62" rx="10" fill="#dbe4ff" stroke="#3b5bdb"/>
+  </g>
+  <g font-size="14" font-weight="700" fill="#3b5bdb" text-anchor="middle">
+    <text x="77" y="387">old</text><text x="149" y="387">old</text><text x="221" y="387">old</text>
+  </g>
+  <g stroke="#3b5bdb" stroke-width="1.5" fill="none">
+    <path d="M77,314 V348"/><path d="M149,314 V348"/><path d="M221,314 V348"/>
+  </g>
+
+  <!-- frame 2 pods: old old old + new starting -->
+  <g stroke-width="1.8">
+    <rect x="316" y="350" width="50" height="62" rx="9" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="374" y="350" width="50" height="62" rx="9" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="432" y="350" width="50" height="62" rx="9" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="490" y="350" width="50" height="62" rx="9" fill="#ffffff" stroke="#2f9e6b" stroke-dasharray="5 4"/>
+  </g>
+  <g font-size="13" font-weight="700" text-anchor="middle">
+    <text x="341" y="387" fill="#3b5bdb">old</text><text x="399" y="387" fill="#3b5bdb">old</text><text x="457" y="387" fill="#3b5bdb">old</text>
+    <text x="515" y="383" fill="#2f9e6b">new</text>
+  </g>
+  <text x="515" y="399" font-size="9.5" fill="#667085" text-anchor="middle">starting</text>
+  <g stroke="#3b5bdb" stroke-width="1.5" fill="none">
+    <path d="M341,314 V348"/><path d="M399,314 V348"/><path d="M457,314 V348"/>
+  </g>
+  <path d="M515,314 V348" stroke="#c3c9d9" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+
+  <!-- frame 3 pods: old old new(ready) old(stopping) -->
+  <g stroke-width="1.8">
+    <rect x="586" y="350" width="50" height="62" rx="9" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="644" y="350" width="50" height="62" rx="9" fill="#dbe4ff" stroke="#3b5bdb"/>
+    <rect x="702" y="350" width="50" height="62" rx="9" fill="#e6f7ef" stroke="#2f9e6b"/>
+    <rect x="760" y="350" width="50" height="62" rx="9" fill="#ffffff" stroke="#3b5bdb" stroke-dasharray="5 4"/>
+  </g>
+  <g font-size="13" font-weight="700" text-anchor="middle">
+    <text x="611" y="387" fill="#3b5bdb">old</text><text x="669" y="387" fill="#3b5bdb">old</text>
+    <text x="727" y="387" fill="#2f9e6b">new</text>
+    <text x="785" y="383" fill="#8a91a3">old</text>
+  </g>
+  <text x="785" y="399" font-size="9.5" fill="#667085" text-anchor="middle">stopping</text>
+  <g stroke="#3b5bdb" stroke-width="1.5" fill="none">
+    <path d="M611,314 V348"/><path d="M669,314 V348"/>
+  </g>
+  <path d="M727,314 V348" stroke="#2f9e6b" stroke-width="1.5" fill="none"/>
+  <path d="M785,314 V348" stroke="#c3c9d9" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+
+  <!-- frame 4 pods: new new new -->
+  <g stroke-width="1.8">
+    <rect x="856" y="350" width="62" height="62" rx="10" fill="#e6f7ef" stroke="#2f9e6b"/>
+    <rect x="928" y="350" width="62" height="62" rx="10" fill="#e6f7ef" stroke="#2f9e6b"/>
+    <rect x="1000" y="350" width="62" height="62" rx="10" fill="#e6f7ef" stroke="#2f9e6b"/>
+  </g>
+  <g font-size="14" font-weight="700" fill="#2f9e6b" text-anchor="middle">
+    <text x="887" y="387">new</text><text x="959" y="387">new</text><text x="1031" y="387">new</text>
+  </g>
+  <g stroke="#2f9e6b" stroke-width="1.5" fill="none">
+    <path d="M887,314 V348"/><path d="M959,314 V348"/><path d="M1031,314 V348"/>
+  </g>
+
+  <!-- captions -->
+  <g font-size="12" fill="#4a5163">
+    <text x="46" y="445">3 pods on the old version,</text>
+    <text x="46" y="462">all serving traffic.</text>
+
+    <text x="316" y="445">One extra pod starts.</text>
+    <text x="316" y="462">Old pods keep serving.</text>
+
+    <text x="586" y="445">New pod passes its health check,</text>
+    <text x="586" y="462">so one old pod drains and stops.</text>
+    <text x="586" y="479" fill="#667085">Steps 2 and 3 repeat for each pod.</text>
+
+    <text x="856" y="445">3 pods on the new version.</text>
+    <text x="856" y="462">No pod was removed before its</text>
+    <text x="856" y="479">replacement was ready.</text>
+  </g>
+
+  <!-- footer -->
+  <rect x="30" y="526" width="1060" height="66" rx="12" fill="#efe9ff" stroke="#7c5cd6" stroke-width="1.8"/>
+  <text x="50" y="553" font-size="14" font-weight="700" fill="#16191d">maxSurge 1 · maxUnavailable 0</text>
+  <text x="50" y="574" font-size="13" fill="#4a5163">Capacity never drops below 3 pods during an update.</text>
+  <text x="1070" y="553" font-size="14" font-weight="700" fill="#16191d" text-anchor="end">Measured: 21 s rollout, 0 failed requests</text>
+  <text x="1070" y="574" font-size="13" fill="#4a5163" text-anchor="end">A bad release is held back and rolled back with one command.</text>
+</svg>

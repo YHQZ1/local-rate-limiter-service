@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" width="1120" height="600" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b5bdb"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a91a3"/>
+    </marker>
+  </defs>
+  <rect width="1120" height="600" fill="#ffffff"/>
+
+  <text x="30" y="40" font-size="22" font-weight="700" fill="#3b5bdb">Architecture and cluster topology</text>
+
+  <!-- delivery chain -->
+  <rect x="30" y="68" width="250" height="72" rx="12" fill="#eef2ff" stroke="#3b5bdb" stroke-width="2"/>
+  <text x="155" y="98" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">GitHub Actions</text>
+  <text x="155" y="120" font-size="12.5" fill="#4a5163" text-anchor="middle">lint · test · build · smoke test</text>
+
+  <rect x="360" y="68" width="250" height="72" rx="12" fill="#eef2ff" stroke="#3b5bdb" stroke-width="2"/>
+  <text x="485" y="98" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">GHCR image registry</text>
+  <text x="485" y="120" font-size="12.5" fill="#4a5163" text-anchor="middle">linux/amd64 + linux/arm64, 17.7 MB</text>
+
+  <path d="M280,104 H358" stroke="#3b5bdb" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="319" y="96" font-size="11.5" fill="#667085" text-anchor="middle">push</text>
+  <path d="M485,140 V196" stroke="#3b5bdb" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="497" y="172" font-size="11.5" fill="#667085">image pull</text>
+
+  <!-- cluster -->
+  <rect x="30" y="198" width="800" height="372" rx="16" fill="#f6f8fd" stroke="#3b5bdb" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="48" y="224" font-size="13" font-weight="700" fill="#3b5bdb" letter-spacing="0.5">KUBERNETES CLUSTER</text>
+  <text x="60" y="248" font-size="11.5" fill="#667085">namespace: ratelimiter</text>
+
+  <rect x="60" y="262" width="150" height="52" rx="10" fill="#ffffff" stroke="#9aa3b8" stroke-width="1.5"/>
+  <text x="135" y="287" font-size="14" font-weight="600" fill="#16191d" text-anchor="middle">Client</text>
+  <text x="135" y="304" font-size="11" fill="#667085" text-anchor="middle">in-cluster or port-forward</text>
+
+  <rect x="60" y="360" width="190" height="72" rx="10" fill="#dbe4ff" stroke="#3b5bdb" stroke-width="2"/>
+  <text x="155" y="390" font-size="14" font-weight="700" fill="#16191d" text-anchor="middle">Service: ratelimiter</text>
+  <text x="155" y="412" font-size="12" fill="#3b5bdb" text-anchor="middle">ClusterIP · port 80 → 8080</text>
+  <path d="M135,314 V358" stroke="#3b5bdb" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <g fill="#e6f7ef" stroke="#2f9e6b" stroke-width="1.8">
+    <rect x="390" y="262" width="260" height="56" rx="10"/>
+    <rect x="390" y="330" width="260" height="56" rx="10"/>
+    <rect x="390" y="398" width="260" height="56" rx="10"/>
+  </g>
+  <g font-size="14" font-weight="700" fill="#16191d" text-anchor="middle">
+    <text x="520" y="287">Pod 1 · Go ratelimiter</text>
+    <text x="520" y="355">Pod 2 · Go ratelimiter</text>
+    <text x="520" y="423">Pod 3 · Go ratelimiter</text>
+  </g>
+  <g font-size="11.5" fill="#4a5163" text-anchor="middle">
+    <text x="520" y="306">token buckets in memory · /health · /metrics</text>
+    <text x="520" y="374">token buckets in memory · /health · /metrics</text>
+    <text x="520" y="442">token buckets in memory · /health · /metrics</text>
+  </g>
+  <g stroke="#3b5bdb" stroke-width="2" fill="none">
+    <path d="M250,385 L388,292" marker-end="url(#a)"/>
+    <path d="M250,396 L388,358" marker-end="url(#a)"/>
+    <path d="M250,408 L388,424" marker-end="url(#a)"/>
+  </g>
+  <text x="662" y="360" font-size="11.5" fill="#667085">3 replicas,</text>
+  <text x="662" y="376" font-size="11.5" fill="#667085">rolling updates</text>
+
+  <!-- monitoring -->
+  <rect x="60" y="480" width="740" height="70" rx="10" fill="#efe9ff" stroke="#7c5cd6" stroke-width="1.8"/>
+  <text x="76" y="499" font-size="11" font-weight="700" fill="#7c5cd6" letter-spacing="0.5">NAMESPACE: MONITORING</text>
+  <rect x="230" y="506" width="230" height="34" rx="8" fill="#ffffff" stroke="#7c5cd6" stroke-width="1.5"/>
+  <text x="345" y="528" font-size="13" font-weight="600" fill="#16191d" text-anchor="middle">Prometheus (scrape every 5 s)</text>
+  <rect x="540" y="506" width="230" height="34" rx="8" fill="#ffffff" stroke="#7c5cd6" stroke-width="1.5"/>
+  <text x="655" y="528" font-size="13" font-weight="600" fill="#16191d" text-anchor="middle">Grafana dashboards</text>
+  <path d="M460,523 H538" stroke="#7c5cd6" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <path d="M600,456 C600,468 440,462 360,504" stroke="#8a91a3" stroke-width="1.8" stroke-dasharray="6 5" fill="none" marker-end="url(#g)"/>
+  <text x="640" y="474" font-size="11.5" fill="#667085">scrape /metrics</text>
+
+  <!-- configuration management -->
+  <rect x="880" y="198" width="210" height="76" rx="12" fill="#fff4e0" stroke="#e0902b" stroke-width="2"/>
+  <text x="985" y="228" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">Ansible</text>
+  <text x="985" y="250" font-size="12.5" fill="#4a5163" text-anchor="middle">playbook + inventory</text>
+  <path d="M985,274 V336" stroke="#e0902b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="997" y="312" font-size="11.5" fill="#667085">configures</text>
+  <rect x="880" y="338" width="210" height="120" rx="12" fill="#fff4e0" stroke="#e0902b" stroke-width="2"/>
+  <text x="985" y="368" font-size="15" font-weight="700" fill="#16191d" text-anchor="middle">Ubuntu server</text>
+  <g font-size="12.5" fill="#4a5163" text-anchor="middle">
+    <text x="985" y="392">service user + config files</text>
+    <text x="985" y="411">hardened systemd unit</text>
+    <text x="985" y="430">same release binary</text>
+  </g>
+  <text x="985" y="490" font-size="11.5" fill="#667085" text-anchor="middle">first run changed=11,</text>
+  <text x="985" y="506" font-size="11.5" fill="#667085" text-anchor="middle">second run changed=0</text>
+</svg>
