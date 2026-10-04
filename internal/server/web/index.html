@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ratelimiter</title>
+<style>
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/assets/inter.woff2") format("woff2");
+  }
+  :root {
+    color-scheme: dark;
+    --bg: #121214;
+    --field: #1a1a1d;
+    --line: #2a2a2f;
+    --text: #ededf0;
+    --muted: #8c8c96;
+    --accent: #5b8cff;
+    --accent-hi: #86a9ff;
+    --ok: #3ccf8e;
+    --deny: #ff5d62;
+  }
+  * { box-sizing: border-box; border-radius: 0; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
+
+  /* tabular figures only where digits line up in columns or tick over live */
+  .stat b, .gauge-head b, #log .time, #log .meta2, #uptime, #limits { font-variant-numeric: tabular-nums; }
+
+  /* header */
+  header {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 14px 40px;
+    padding: 14px 32px; border-bottom: 1px solid var(--line);
+  }
+  .brand { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-right: 8px; }
+  .meta { display: flex; flex-direction: column; line-height: 1.25; }
+  .k { font-size: 10.5px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; }
+  .v { font-weight: 500; }
+  .v.accent { color: var(--accent); }
+  .spacer { flex: 1; }
+  .sq { display: inline-block; width: 8px; height: 8px; margin-right: 8px; background: var(--muted); }
+  .sq.up { background: var(--ok); } .sq.down { background: var(--deny); }
+
+  /* layout */
+  main { flex: 1; display: grid; grid-template-columns: minmax(380px, 0.8fr) minmax(0, 1.6fr); }
+  section { padding: 28px 32px; min-width: 0; }
+  section + section { border-left: 1px solid var(--line); }
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    section + section { border-left: 0; border-top: 1px solid var(--line); }
+  }
+  h2 { margin: 0 0 22px; font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em; }
+  h2 .path { color: var(--accent); text-transform: none; letter-spacing: 0.02em; }
+
+  /* controls */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+  label { display: flex; flex-direction: column; gap: 6px; }
+  input {
+    font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line);
+    height: 36px; padding: 0 10px; min-width: 0; outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  #key { width: 190px; } #cost, #burstN { width: 76px; } #autoRate { width: 96px; }
+  button {
+    font: inherit; font-weight: 500; height: 36px; padding: 0 18px; cursor: pointer;
+    background: transparent; color: var(--text); border: 1px solid var(--line);
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #0a0a0c; font-weight: 600; }
+  button.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); color: #0a0a0c; }
+  button.on { border-color: var(--accent); color: var(--accent); }
+
+  /* bucket gauge */
+  .gauge-head { display: flex; justify-content: space-between; align-items: baseline; margin: 30px 0 10px; }
+  .gauge-head b { font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+  .gauge-head span { color: var(--muted); font-size: 13px; }
+  .track { height: 10px; background: var(--field); border: 1px solid var(--line); }
+  .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.12s linear; }
+  .fill.low { background: var(--deny); }
+  .fill.unknown { width: 0 !important; }
+  .hint { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+  .verdict { margin: 22px 0 6px; padding: 10px 14px; background: var(--field);
+    border-left: 3px solid var(--line); color: var(--muted); min-height: 42px; }
+  .verdict.ok { border-left-color: var(--ok); color: var(--ok); }
+  .verdict.deny { border-left-color: var(--deny); color: var(--deny); }
+
+  ul#log { list-style: none; padding: 0; margin: 18px 0 0; font-size: 13px; }
+  #log li { display: grid; grid-template-columns: 68px 40px minmax(0, 1fr) auto; gap: 12px;
+    padding: 7px 0; border-top: 1px solid var(--line); color: var(--muted); }
+  #log li:first-child { border-top: 0; }
+  #log .code { font-weight: 600; }
+  #log .code.s2 { color: var(--ok); }
+  #log .code.s4, #log .code.s5, #log .code.s0 { color: var(--deny); }
+  #log .what { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #log .meta2 { white-space: nowrap; text-align: right; }
+
+  /* live panel */
+  /* six stats: only ever 2, 3 or 6 columns, so the last row is never ragged */
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 28px; }
+  .stat { background: var(--bg); padding: 14px 16px; }
+  .stat .k { display: block; margin-bottom: 4px; }
+  .stat b { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; line-height: 1.2; }
+  @media (min-width: 1600px) { .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .stat b.good { color: var(--ok); } .stat b.bad { color: var(--deny); }
+  canvas { width: 100%; height: clamp(220px, 36vh, 420px); display: block; }
+  .legend { display: flex; gap: 22px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px; }
+  .note { font-size: 12px; color: var(--muted); margin: 18px 0 0; max-width: 70ch; }
+
+  @media (max-width: 520px) {
+    header { padding: 14px 16px; gap: 12px 24px; }
+    section { padding: 20px 16px; }
+    #key { width: 150px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #log li { grid-template-columns: 62px 36px minmax(0, 1fr); }
+    #log .meta2 { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">ratelimiter</span>
+  <div class="meta"><span class="k">Version</span><span class="v accent" id="version">…</span></div>
+  <div class="meta"><span class="k">Limits</span><span class="v" id="limits">…</span></div>
+  <span class="spacer"></span>
+  <div class="meta"><span class="k">Uptime</span><span class="v" id="uptime">–</span></div>
+  <div class="meta"><span class="k">Status</span><span class="v"><span class="sq" id="dot"></span><span id="status">connecting</span></span></div>
+</header>
+
+<main>
+  <section aria-labelledby="h-play">
+    <h2 id="h-play">Playground</h2>
+    <div class="row">
+      <label><span class="k">Key</span><input type="text" id="key" value="demo-user" maxlength="256" autocomplete="off" spellcheck="false"></label>
+      <label><span class="k">Cost</span><input type="number" id="cost" value="1" min="1" step="1"></label>
+      <button class="primary" id="send">Send request</button>
+    </div>
+    <div class="row">
+      <label><span class="k">Burst of</span><input type="number" id="burstN" value="20" min="1" max="500"></label>
+      <button id="burst">Fire burst</button>
+      <label><span class="k">Auto (req/s)</span><input type="number" id="autoRate" value="5" min="1" max="50"></label>
+      <button id="auto">Start auto</button>
+    </div>
+
+    <div class="gauge-head"><b id="tokens">–</b><span id="tokensOf">tokens in this key's bucket</span></div>
+    <div class="track" role="progressbar" aria-label="Tokens in bucket" id="track"><div class="fill unknown" id="fill"></div></div>
+    <p class="hint" id="gaugeHint">Send a request to start tracking this key. Between requests the gauge shows the estimated refill.</p>
+
+    <div class="verdict" id="verdict" role="status" aria-live="polite">No requests yet.</div>
+    <ul id="log" aria-label="Recent requests"></ul>
+  </section>
+
+  <section aria-labelledby="h-live">
+    <h2 id="h-live">Service, live from <span class="path">/metrics</span></h2>
+    <div class="stats">
+      <div class="stat"><span class="k">Allowed / s</span><b class="good" id="sAllowed">0</b></div>
+      <div class="stat"><span class="k">Denied / s</span><b class="bad" id="sDenied">0</b></div>
+      <div class="stat"><span class="k">p95 latency</span><b id="sP95">–</b></div>
+      <div class="stat"><span class="k">Active keys</span><b id="sKeys">0</b></div>
+      <div class="stat"><span class="k">Total checks</span><b id="sTotal">0</b></div>
+      <div class="stat"><span class="k">5xx errors</span><b id="s5xx">0</b></div>
+    </div>
+    <canvas id="chart" aria-label="Checks per second over the last 60 seconds"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i>Allowed</span>
+      <span><i style="background:var(--deny)"></i>Denied (429)</span>
+      <span style="margin-left:auto">Last 60 seconds</span>
+    </div>
+    <p class="note">These numbers cover all clients, not just this page: run a load script against the service and watch the chart react. A 429 is the limiter doing its job, so it is not counted as a 5xx error. Latency is the p95 of <span style="color:var(--text)">/check</span> over the last few seconds.</p>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => Math.round(n).toLocaleString();
+
+// ---------- configuration ----------
+let cfg = { rate_per_sec: 0, burst: 0 };
+
+async function getJSON(path) {
+  const r = await fetch(path, { cache: 'no-store' });
+  if (!r.ok) throw new Error(path + ' ' + r.status);
+  return r.json();
+}
+
+async function loadStatic() {
+  try {
+    cfg = await getJSON('/config');
+    $('#limits').textContent = `${cfg.rate_per_sec} / s, burst ${cfg.burst}`;
+    $('#cost').max = cfg.burst;
+  } catch (e) { /* retried by the poller */ }
+  try { $('#version').textContent = (await getJSON('/version')).version; } catch (e) {}
+}
+
+// ---------- playground ----------
+let bucket = null; // { tokens, at } as of the last response for the current key
+const MAX_LOG = 12;
+
+function keyValue() { return $('#key').value.trim() || 'demo-user'; }
+
+async function check() {
+  const key = keyValue();
+  const cost = Math.max(1, parseInt($('#cost').value, 10) || 1);
+  const t0 = performance.now();
+  let status = 0, body = {}, retry = null;
+  try {
+    const r = await fetch('/check', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, cost }),
+    });
+    status = r.status;
+    retry = r.headers.get('Retry-After');
+    try { body = await r.json(); } catch (e) {}
+  } catch (e) { body = { error: 'network error' }; }
+  const ms = performance.now() - t0;
+  if (key === keyValue() && typeof body.remaining === 'number') {
+    bucket = { tokens: body.remaining, at: performance.now() };
+  }
+  show(status, body, retry, ms, key, cost);
+}
+
+function show(status, body, retry, ms, key, cost) {
+  const v = $('#verdict');
+  const time = new Date().toLocaleTimeString([], { hour12: false });
+  let text, cls;
+  if (status === 200) {
+    cls = 'ok'; text = `Allowed. ${body.remaining} of ${body.limit} tokens left.`;
+  } else if (status === 429) {
+    cls = 'deny'; text = `Denied (429). Try again in ${retry}s (exact wait ${body.retry_after_seconds}s).`;
+  } else {
+    cls = 'deny'; text = `Error ${status || ''}: ${body.error || 'request failed'}`;
+  }
+  v.className = 'verdict ' + cls; v.textContent = text;
+
+  const li = document.createElement('li');
+  const cell = (cls, txt) => { const s = document.createElement('span'); s.className = cls; s.textContent = txt; return s; };
+  li.append(
+    cell('time', time),
+    cell('code s' + String(status)[0], status || 'ERR'),
+    cell('what', `${key} ×${cost}`),
+    cell('meta2', (typeof body.remaining === 'number' ? `${body.remaining} left, ` : '') + `${ms.toFixed(1)} ms`),
+  );
+  const log = $('#log');
+  log.prepend(li);
+  while (log.children.length > MAX_LOG) log.lastChild.remove();
+}
+
+function renderGauge() {
+  const fill = $('#fill'), burst = cfg.burst;
+  if (!burst) return;
+  if (!bucket) {
+    fill.className = 'fill unknown';
+    $('#gaugeHint').textContent = 'Send a request to start tracking this key. Between requests the gauge shows the estimated refill.';
+    $('#tokens').textContent = '–';
+    $('#tokensOf').textContent = `of ${burst} tokens, no data for this key yet`;
+    return;
+  }
+  const est = Math.min(burst, bucket.tokens + cfg.rate_per_sec * (performance.now() - bucket.at) / 1000);
+  $('#gaugeHint').textContent = 'Estimated from the last response plus the refill rate. Change the key to track a different bucket.';
+  fill.className = 'fill' + (est < 1 ? ' low' : '');
+  fill.style.width = (est / burst) * 100 + '%';
+  $('#tokens').textContent = est.toFixed(1);
+  $('#tokensOf').textContent = `of ${burst} tokens, refilling ${cfg.rate_per_sec} / s`;
+  $('#track').setAttribute('aria-valuenow', est.toFixed(1));
+  $('#track').setAttribute('aria-valuemax', burst);
+}
+setInterval(renderGauge, 100);
+
+$('#key').addEventListener('input', () => { bucket = null; });
+$('#send').addEventListener('click', check);
+$('#key').addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+
+$('#burst').addEventListener('click', () => {
+  const n = Math.min(500, Math.max(1, parseInt($('#burstN').value, 10) || 1));
+  for (let i = 0; i < n; i++) check();
+});
+
+let autoTimer = null;
+$('#auto').addEventListener('click', () => {
+  const btn = $('#auto');
+  if (autoTimer) {
+    clearInterval(autoTimer); autoTimer = null;
+    btn.textContent = 'Start auto'; btn.classList.remove('on');
+    return;
+  }
+  const rate = Math.min(50, Math.max(1, parseInt($('#autoRate').value, 10) || 1));
+  autoTimer = setInterval(check, 1000 / rate);
+  btn.textContent = 'Stop auto'; btn.classList.add('on');
+});
+
+// ---------- live metrics ----------
+function parseMetrics(text) {
+  const m = { allowed: 0, denied: 0, error: 0, keys: 0, start: 0, total5xx: 0, buckets: [] };
+  for (const line of text.split('\n')) {
+    if (!line || line[0] === '#') continue;
+    const sp = line.lastIndexOf(' ');
+    const name = line.slice(0, sp), val = parseFloat(line.slice(sp + 1));
+    let g;
+    if ((g = name.match(/^ratelimiter_checks_total\{result="(\w+)"\}$/))) m[g[1]] = val;
+    else if (name === 'ratelimiter_active_keys') m.keys = val;
+    else if (name === 'process_start_time_seconds') m.start = val;
+    else if ((g = name.match(/^ratelimiter_http_requests_total\{code="5\d\d"/))) m.total5xx += val;
+    else if ((g = name.match(/^ratelimiter_http_request_duration_seconds_bucket\{path="\/check",le="([^"]+)"\}$/))) {
+      m.buckets.push([g[1] === '+Inf' ? Infinity : parseFloat(g[1]), val]);
+    }
+  }
+  m.buckets.sort((a, b) => a[0] - b[0]);
+  return m;
+}
+
+// Estimate a quantile from cumulative histogram buckets (delta between two scrapes).
+function quantile(q, older, newer) {
+  if (!older || older.length !== newer.length || !newer.length) return null;
+  const d = newer.map(([le, c], i) => [le, Math.max(0, c - older[i][1])]);
+  const total = d[d.length - 1][1];
+  if (total <= 0) return null;
+  const target = q * total;
+  let prevLe = 0, prevC = 0;
+  for (const [le, c] of d) {
+    if (c >= target) {
+      if (!isFinite(le)) return prevLe;
+      return prevLe + (le - prevLe) * ((target - prevC) / Math.max(1, c - prevC));
+    }
+    prevLe = le; prevC = c;
+  }
+  return prevLe;
+}
+
+const history = [];   // scrapes: { t, m }
+const samples = [];   // chart points: { a, d } per second
+const MAX_SAMPLES = 60;
+
+async function poll() {
+  let m;
+  try {
+    const r = await fetch('/metrics', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    m = parseMetrics(await r.text());
+  } catch (e) {
+    $('#dot').className = 'sq down'; $('#status').textContent = 'unreachable';
+    return;
+  }
+  if (!cfg.burst) loadStatic();
+  $('#dot').className = 'sq up'; $('#status').textContent = 'healthy';
+
+  const now = performance.now();
+  const prev = history[history.length - 1];
+  if (prev) {
+    const dt = (now - prev.t) / 1000;
+    // A counter going down means the server restarted: treat it as a fresh start.
+    const rate = (cur, old) => (cur >= old ? (cur - old) / dt : cur / dt);
+    const a = rate(m.allowed, prev.m.allowed), d = rate(m.denied, prev.m.denied);
+    samples.push({ a, d });
+    if (samples.length > MAX_SAMPLES) samples.shift();
+    $('#sAllowed').textContent = fmt(a);
+    $('#sDenied').textContent = fmt(d);
+  }
+  history.push({ t: now, m });
+  if (history.length > 8) history.shift();
+
+  const ref = history.length > 1 ? history[0] : null;
+  const p95 = ref ? quantile(0.95, ref.m.buckets, m.buckets) : null;
+  $('#sP95').textContent = p95 == null ? '–' : (p95 * 1000 < 10 ? (p95 * 1000).toFixed(2) : (p95 * 1000).toFixed(0)) + ' ms';
+  $('#sKeys').textContent = fmt(m.keys);
+  $('#sTotal').textContent = fmt(m.allowed + m.denied + m.error);
+  const e5 = $('#s5xx');
+  e5.textContent = fmt(m.total5xx);
+  e5.className = m.total5xx > 0 ? 'bad' : '';
+  if (m.start) {
+    const up = Math.max(0, Date.now() / 1000 - m.start);
+    $('#uptime').textContent = up < 90 ? Math.round(up) + 's' : up < 5400 ? Math.round(up / 60) + 'm' : (up / 3600).toFixed(1) + 'h';
+  }
+  drawChart();
+}
+
+function drawChart() {
+  const c = $('#chart'), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  }
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement);
+  const col = (n) => css.getPropertyValue(n).trim();
+
+  const padL = 40, padB = 4, padT = 8, pw = w - padL, ph = h - padB - padT;
+  let max = 1;
+  for (const s of samples) max = Math.max(max, s.a + s.d);
+  const mag = Math.pow(10, Math.floor(Math.log10(max)));
+  max = Math.ceil(max / mag) * mag; // round the axis up to a "nice" number
+
+  g.font = '11px "Inter", system-ui, sans-serif';
+  g.fillStyle = col('--muted'); g.strokeStyle = col('--line'); g.lineWidth = 1;
+  g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++) {
+    const y = Math.round(padT + ph - (ph * i) / 4) + 0.5;
+    g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
+    const v = (max * i) / 4;
+    g.fillText(v >= 1000 ? (v / 1000) + 'k' : String(+v.toFixed(1)), padL - 8, y);
+  }
+  const slot = pw / MAX_SAMPLES, bw = Math.max(1, slot - 2);
+  const off = MAX_SAMPLES - samples.length;
+  samples.forEach((s, i) => {
+    const x = padL + (off + i) * slot + 1;
+    const ha = (s.a / max) * ph, hd = (s.d / max) * ph;
+    g.fillStyle = col('--ok'); g.fillRect(x, padT + ph - ha, bw, ha);
+    g.fillStyle = col('--deny'); g.fillRect(x, padT + ph - ha - hd, bw, hd);
+  });
+}
+window.addEventListener('resize', drawChart);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawChart);
+
+loadStatic();
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

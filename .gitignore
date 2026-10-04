@@ -1,0 +1,9 @@
+# Build output
+bin/
+*.test
+*.out
+
+# Editor/OS junk
+.vscode/
+.idea/
+.DS_Store
