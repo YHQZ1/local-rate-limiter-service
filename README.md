@@ -152,7 +152,7 @@ docker run -d -p 8080:8080 -e RATE_PER_SEC=1 -e BURST=3 ratelimiter:dev
 scripts/smoke.sh http://localhost:8080
 ```
 
-Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets need to be configured. A newly published GHCR package starts private. To pull it without logging in (for example from a local Kubernetes cluster), make it public under the package's settings on GitHub.
+Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets need to be configured. The package is linked to this repository through the image's OCI source label and, because the repository is public, it can be pulled anonymously. If you ever make the repository private, pulls will need credentials (for Kubernetes, an `imagePullSecret`).
 
 ## Design notes and limits
 
