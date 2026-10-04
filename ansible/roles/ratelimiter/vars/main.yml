@@ -1,0 +1,2 @@
+---
+ratelimiter_release_dir: "{{ ratelimiter_base_dir }}/releases/{{ ratelimiter_app_version }}"

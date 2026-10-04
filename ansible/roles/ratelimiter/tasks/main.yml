@@ -1,0 +1,148 @@
+---
+- name: Check the CPU architecture is supported
+  ansible.builtin.assert:
+    that: ansible_facts['architecture'] in ['x86_64', 'aarch64']
+    fail_msg: "No ratelimiter build for architecture {{ ansible_facts['architecture'] }}."
+    quiet: true
+
+- name: Create the service group
+  ansible.builtin.group:
+    name: "{{ ratelimiter_group }}"
+    system: true
+
+- name: Create the service user
+  ansible.builtin.user:
+    name: "{{ ratelimiter_user }}"
+    group: "{{ ratelimiter_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ ratelimiter_base_dir }}"
+    create_home: false
+    comment: ratelimiter service account
+
+- name: Create the release and config directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ ratelimiter_base_dir }}", group: root, mode: "0755" }
+    - { path: "{{ ratelimiter_release_dir }}", group: root, mode: "0755" }
+    - { path: "{{ ratelimiter_conf_dir }}", group: "{{ ratelimiter_group }}", mode: "0750" }
+  loop_control:
+    label: "{{ item.path }}"
+
+# --- Binary: from a GitHub release (checksum-verified) or from this machine ----
+- name: Download the release checksums
+  ansible.builtin.uri:
+    url: "{{ ratelimiter_release_base_url }}/{{ ratelimiter_version }}/checksums.txt"
+    return_content: true
+  register: ratelimiter_checksums
+  when: ratelimiter_version | length > 0
+  changed_when: false
+
+- name: Download the release binary
+  ansible.builtin.get_url:
+    url: "{{ ratelimiter_release_base_url }}/{{ ratelimiter_version }}/ratelimiter_linux_{{ ratelimiter_goarch }}"
+    dest: "{{ ratelimiter_release_dir }}/ratelimiter"
+    checksum: "sha256:{{ ratelimiter_expected_sha256 }}"
+    owner: root
+    group: root
+    mode: "0755"
+  vars:
+    # checksums.txt lines look like "<sha256>  ratelimiter_linux_arm64"
+    ratelimiter_expected_sha256: >-
+      {{ ratelimiter_checksums.content.splitlines()
+         | select('search', 'ratelimiter_linux_' ~ ratelimiter_goarch ~ '$')
+         | first | split | first }}
+  when: ratelimiter_version | length > 0
+  notify: Restart ratelimiter
+
+- name: Copy the locally built binary
+  ansible.builtin.copy:
+    src: "{{ ratelimiter_local_binary }}"
+    dest: "{{ ratelimiter_release_dir }}/ratelimiter"
+    owner: root
+    group: root
+    mode: "0755"
+  when: ratelimiter_version | length == 0
+  notify: Restart ratelimiter
+
+# "current" points at the active release. Rolling back is repointing it at an
+# older directory under releases/ and restarting the service.
+- name: Point "current" at this release
+  ansible.builtin.file:
+    src: "{{ ratelimiter_release_dir }}"
+    dest: "{{ ratelimiter_base_dir }}/current"
+    state: link
+    force: "{{ ansible_check_mode }}" # in --check the release dir isn't created, so the target is absent
+    owner: root
+    group: root
+  notify: Restart ratelimiter
+
+# --- Configuration and service --------------------------------------------------
+- name: Install the service configuration
+  ansible.builtin.template:
+    src: ratelimiter.env.j2
+    dest: "{{ ratelimiter_conf_dir }}/ratelimiter.env"
+    owner: root
+    group: "{{ ratelimiter_group }}"
+    mode: "0640"
+  notify: Restart ratelimiter
+
+- name: Install the systemd unit
+  ansible.builtin.template:
+    src: ratelimiter.service.j2
+    dest: /etc/systemd/system/ratelimiter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart ratelimiter
+
+# In --check mode on a fresh host the unit file is never written, so there is no
+# service yet to restart or start. This lets the dry run skip those cleanly.
+- name: Check whether the systemd unit exists
+  ansible.builtin.stat:
+    path: /etc/systemd/system/ratelimiter.service
+  register: ratelimiter_unit
+
+- name: Apply pending handlers before starting the service
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the service
+  ansible.builtin.systemd_service:
+    name: ratelimiter
+    enabled: true
+    state: started
+  when: ratelimiter_unit.stat.exists
+
+# --- Verify (skipped in --check mode: nothing has really been deployed) ----------
+- name: Wait for the service to report healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ ratelimiter_port }}/health"
+    return_content: true
+  register: ratelimiter_health
+  until: ratelimiter_health.status == 200
+  retries: "{{ ratelimiter_health_retries }}"
+  delay: "{{ ratelimiter_health_delay }}"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Read the running version
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ ratelimiter_port }}/version"
+    return_content: true
+  register: ratelimiter_running
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Check the running version is the one we deployed
+  when: not ansible_check_mode
+  ansible.builtin.assert:
+    that: ratelimiter_running.json.version == ratelimiter_app_version
+    success_msg: "ratelimiter {{ ratelimiter_running.json.version }} is up and healthy"
+    fail_msg: "Expected {{ ratelimiter_app_version }} but the service reports {{ ratelimiter_running.json.version }}"

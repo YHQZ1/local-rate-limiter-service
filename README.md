@@ -154,6 +154,10 @@ scripts/smoke.sh http://localhost:8080
 
 Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets need to be configured. The package is linked to this repository through the image's OCI source label and, because the repository is public, it can be pulled anonymously. If you ever make the repository private, pulls will need credentials (for Kubernetes, an `imagePullSecret`).
 
+## Configuration management (Ansible)
+
+[`ansible/`](ansible/) holds a playbook and inventory that configure a bare Ubuntu server for this service: packages, a service user, config files, a sandboxed systemd unit, checksum-verified release installs and instant rollback. See [`ansible/README.md`](ansible/README.md) for how to try it against a local lab server.
+
 ## Design notes and limits
 
 - **State is per instance, in memory.** Run several replicas and each keeps its own buckets, so a key's effective limit is roughly `replicas x` the configured one unless requests for a key are routed to the same instance. Sharing state would need something like Redis; that is deliberately out of scope.

@@ -1,0 +1,11 @@
+---
+# Handlers run once, after the tasks that notify them, in this order.
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart ratelimiter
+  ansible.builtin.systemd_service:
+    name: ratelimiter
+    state: restarted
+  when: ratelimiter_unit.stat.exists

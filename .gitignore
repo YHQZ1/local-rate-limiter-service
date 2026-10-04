@@ -7,3 +7,9 @@ bin/
 .vscode/
 .idea/
 .DS_Store
+
+# Ansible: local virtualenv and the lab's throwaway SSH key (never commit keys)
+ansible/.venv/
+ansible/lab/id_ed25519
+ansible/lab/id_ed25519.pub
+*.retry

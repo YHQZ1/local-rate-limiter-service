@@ -1,0 +1,11 @@
+---
+# Settings for every host in the "ratelimiter" group. Anything not set here
+# falls back to the role defaults (roles/ratelimiter/defaults/main.yml).
+
+# Release tag to deploy from GitHub Releases, e.g. "v1.0.0". Leave empty to
+# install the locally built binary instead (run `make dist` first).
+ratelimiter_version: ""
+
+# Limits enforced by the service.
+ratelimiter_rate_per_sec: 5
+ratelimiter_burst: 10

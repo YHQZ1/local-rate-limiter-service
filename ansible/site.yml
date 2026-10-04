@@ -1,0 +1,9 @@
+---
+- name: Configure ratelimiter servers
+  hosts: ratelimiter
+  become: true
+  roles:
+    - role: common
+      tags: [common]
+    - role: ratelimiter
+      tags: [ratelimiter]

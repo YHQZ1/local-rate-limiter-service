@@ -1,0 +1,9 @@
+---
+# Packages every server gets: TLS roots, plus curl and jq for debugging and
+# health checks.
+common_packages:
+  - ca-certificates
+  - curl
+  - jq
+
+common_apt_cache_valid_time: 3600

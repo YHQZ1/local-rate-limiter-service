@@ -1,0 +1,30 @@
+---
+# --- Which build to install ---------------------------------------------------
+# Release tag to download from GitHub Releases (e.g. "v1.0.0"). When empty the
+# binary at ratelimiter_local_binary is copied from the machine running Ansible.
+ratelimiter_version: ""
+ratelimiter_release_base_url: https://github.com/YHQZ1/local-rate-limiter-service/releases/download
+ratelimiter_goarch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+ratelimiter_local_binary: "{{ playbook_dir }}/../bin/ratelimiter_linux_{{ ratelimiter_goarch }}"
+
+# --- Where things live --------------------------------------------------------
+ratelimiter_user: ratelimiter
+ratelimiter_group: ratelimiter
+ratelimiter_base_dir: /opt/ratelimiter
+ratelimiter_conf_dir: /etc/ratelimiter
+
+# --- Service configuration (becomes /etc/ratelimiter/ratelimiter.env) ----------
+ratelimiter_port: 8080
+ratelimiter_rate_per_sec: 5
+ratelimiter_burst: 10
+ratelimiter_max_keys: 100000
+ratelimiter_cleanup_interval: 30s
+ratelimiter_shutdown_timeout: 10s
+ratelimiter_log_level: info
+
+# Reported by /version. Defaults to the release tag, or "local" for a local build.
+ratelimiter_app_version: "{{ ratelimiter_version if ratelimiter_version else 'local' }}"
+
+# --- Post-deploy verification ---------------------------------------------------
+ratelimiter_health_retries: 20
+ratelimiter_health_delay: 1

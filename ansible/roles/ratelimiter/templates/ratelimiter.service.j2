@@ -1,0 +1,45 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=ratelimiter token-bucket rate limit service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ ratelimiter_user }}
+Group={{ ratelimiter_group }}
+EnvironmentFile={{ ratelimiter_conf_dir }}/ratelimiter.env
+ExecStart={{ ratelimiter_base_dir }}/current/ratelimiter
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec={{ (ratelimiter_shutdown_timeout | regex_replace('s$', '') | int) + 5 }}
+LimitNOFILE=65536
+
+# Sandboxing: the service needs the network and nothing else.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectProc=invisible
+ProcSubset=pid
+RemoveIPC=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
