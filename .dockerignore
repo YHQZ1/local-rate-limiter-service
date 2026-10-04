@@ -1,0 +1,10 @@
+.git
+.github
+bin
+dist
+docs
+scripts
+*.md
+*.test
+*.out
+.DS_Store

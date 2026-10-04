@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 500" width="1160" height="500" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a4152"/>
+    </marker>
+    <marker id="arrow-dash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a91a3"/>
+    </marker>
+  </defs>
+
+  <rect width="1160" height="500" fill="#ffffff"/>
+
+  <text x="40" y="44" font-size="20" font-weight="700" fill="#16191d">ratelimiter CI/CD pipeline</text>
+  <text x="40" y="66" font-size="13" fill="#667085">GitHub Actions, workflow: .github/workflows/ci-cd.yml</text>
+
+  <!-- column headers -->
+  <g font-size="11" font-weight="600" fill="#667085" letter-spacing="1.2">
+    <text x="40" y="104">TRIGGER</text>
+    <text x="270" y="104">VERIFY (PARALLEL)</text>
+    <text x="560" y="104">PACKAGE (PARALLEL)</text>
+    <text x="860" y="104">PUBLISH</text>
+  </g>
+  <g stroke="#e4e7ec" stroke-width="1">
+    <line x1="40" y1="112" x2="210" y2="112"/>
+    <line x1="270" y1="112" x2="470" y2="112"/>
+    <line x1="560" y1="112" x2="790" y2="112"/>
+    <line x1="860" y1="112" x2="1110" y2="112"/>
+  </g>
+
+  <!-- stage boxes -->
+  <g fill="#f5f7fb" stroke="#3a4152" stroke-width="1.5">
+    <rect x="40"  y="190" width="170" height="140"/>
+    <rect x="270" y="130" width="200" height="90"/>
+    <rect x="270" y="280" width="200" height="90"/>
+    <rect x="560" y="130" width="230" height="90"/>
+    <rect x="560" y="250" width="230" height="200"/>
+    <rect x="860" y="130" width="250" height="90"/>
+    <rect x="860" y="270" width="250" height="90"/>
+  </g>
+  <!-- future stage -->
+  <rect x="860" y="400" width="250" height="50" fill="#ffffff" stroke="#8a91a3" stroke-width="1.5" stroke-dasharray="6 5"/>
+
+  <!-- trigger -->
+  <g fill="#16191d">
+    <text x="56" y="216" font-size="14" font-weight="700">Git event</text>
+    <g font-size="13" fill="#3a4152">
+      <text x="56" y="244">push to main</text>
+      <text x="56" y="266">pull request to main</text>
+      <text x="56" y="288">tag  v*</text>
+      <text x="56" y="310">manual dispatch</text>
+    </g>
+  </g>
+
+  <!-- lint -->
+  <text x="286" y="156" font-size="14" font-weight="700" fill="#16191d">Lint</text>
+  <g font-size="13" fill="#3a4152">
+    <text x="286" y="178">gofmt check</text>
+    <text x="286" y="196">go vet</text>
+    <text x="286" y="214" dy="-0">go mod tidy -diff</text>
+  </g>
+
+  <!-- test -->
+  <text x="286" y="306" font-size="14" font-weight="700" fill="#16191d">Test</text>
+  <g font-size="13" fill="#3a4152">
+    <text x="286" y="328">go test -race</text>
+    <text x="286" y="346">coverage summary</text>
+    <text x="286" y="364">artifact: coverage.out</text>
+  </g>
+
+  <!-- build -->
+  <text x="576" y="156" font-size="14" font-weight="700" fill="#16191d">Build binaries</text>
+  <g font-size="13" fill="#3a4152">
+    <text x="576" y="178">static, linux/amd64 + arm64</text>
+    <text x="576" y="196">version stamped via git describe</text>
+    <text x="576" y="214">artifact: binary-linux-*</text>
+  </g>
+
+  <!-- image -->
+  <text x="576" y="276" font-size="14" font-weight="700" fill="#16191d">Container image</text>
+  <g font-size="13" fill="#3a4152">
+    <text x="576" y="302">1. build image, load locally</text>
+    <text x="576" y="326">2. run it and smoke-test</text>
+    <text x="592" y="344" font-size="12" fill="#667085">health, version, 200 then 429,</text>
+    <text x="592" y="360" font-size="12" fill="#667085">Retry-After, 400, metrics</text>
+    <text x="576" y="384">3. build linux/amd64 + arm64</text>
+    <text x="576" y="408">4. push to GHCR</text>
+    <text x="592" y="426" font-size="12" fill="#667085">main and tags only, never on PRs</text>
+  </g>
+
+  <!-- release -->
+  <text x="876" y="156" font-size="14" font-weight="700" fill="#16191d">GitHub Release</text>
+  <g font-size="13" fill="#3a4152">
+    <text x="876" y="178">only on tag v*</text>
+    <text x="876" y="196">binaries + checksums.txt</text>
+    <text x="876" y="214">+ image reference</text>
+  </g>
+
+  <!-- registry -->
+  <text x="876" y="296" font-size="14" font-weight="700" fill="#16191d">GHCR image</text>
+  <g font-size="12.5" fill="#3a4152">
+    <text x="876" y="318">ghcr.io/&lt;owner&gt;/&lt;repo&gt;</text>
+    <text x="876" y="338">tags: sha-xxxxxxx, main, latest,</text>
+    <text x="876" y="354">1.2.3, 1.2</text>
+  </g>
+
+  <!-- future -->
+  <text x="876" y="421" font-size="13" font-weight="700" fill="#667085">Kubernetes rollout</text>
+  <text x="876" y="438" font-size="12" fill="#667085">added in Step 3</text>
+
+  <!-- arrows: trigger fan-out -->
+  <g stroke="#3a4152" stroke-width="1.5" fill="none">
+    <path d="M210,260 H240"/>
+    <path d="M240,175 V325"/>
+    <path d="M240,175 H268" marker-end="url(#arrow)"/>
+    <path d="M240,325 H268" marker-end="url(#arrow)"/>
+  </g>
+  <!-- verify -> package (both must pass) -->
+  <g stroke="#3a4152" stroke-width="1.5" fill="none">
+    <path d="M470,175 H515"/>
+    <path d="M470,325 H515"/>
+    <path d="M515,175 V350"/>
+    <path d="M515,175 H558" marker-end="url(#arrow)"/>
+    <path d="M515,350 H558" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="#3a4152">
+    <circle cx="240" cy="260" r="3"/>
+    <circle cx="515" cy="250" r="3"/>
+  </g>
+  <text x="522" y="248" font-size="10.5" fill="#667085" text-anchor="start" transform="rotate(0)">both must pass</text>
+
+  <!-- package -> publish -->
+  <g stroke="#3a4152" stroke-width="1.5" fill="none">
+    <path d="M790,175 H858" marker-end="url(#arrow)"/>
+    <path d="M790,315 H858" marker-end="url(#arrow)"/>
+    <path d="M790,265 H825 V200 H858" marker-end="url(#arrow)"/>
+  </g>
+  <!-- registry -> k8s (future) -->
+  <path d="M985,360 V398" stroke="#8a91a3" stroke-width="1.5" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow-dash)"/>
+
+  <!-- legend -->
+  <g font-size="12" fill="#667085">
+    <line x1="40" y1="470" x2="70" y2="470" stroke="#3a4152" stroke-width="1.5"/>
+    <text x="80" y="474">implemented</text>
+    <line x1="180" y1="470" x2="210" y2="470" stroke="#8a91a3" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="220" y="474">planned (Step 3)</text>
+    <text x="1110" y="474" text-anchor="end">Pull requests run lint, test, build and an image build, but publish nothing.</text>
+  </g>
+</svg>

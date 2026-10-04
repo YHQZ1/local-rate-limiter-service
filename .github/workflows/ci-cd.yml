@@ -1,0 +1,222 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Superseded PR runs are cancelled; pushes to main and tags always finish so a
+# publish is never abandoned half way.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go mod tidy
+        run: go mod tidy -diff
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Run tests with the race detector
+        run: go test -race -count=1 -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Coverage summary
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}')
+          {
+            echo "### Test coverage"
+            echo
+            echo "Total statement coverage: **${total}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 7
+
+  build:
+    name: Build (linux/${{ matrix.goarch }})
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so git describe can find tags
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Compute version
+        id: ver
+        run: echo "version=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+      - name: Build static binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/ratelimiter_linux_${GOARCH}" .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binary-linux-${{ matrix.goarch }}
+          path: dist/ratelimiter_linux_${{ matrix.goarch }}
+          if-no-files-found: error
+          retention-days: 14
+
+  image:
+    name: Container image
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # push to GitHub Container Registry
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Compute version
+        id: ver
+        run: echo "version=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Build once for the runner's architecture, load it locally and test the
+      # real container before anything is published.
+      - name: Build image for testing
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ratelimiter:ci
+          build-args: VERSION=${{ steps.ver.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test the container
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          docker run -d --name rl -p 8080:8080 -e RATE_PER_SEC=1 -e BURST=3 ratelimiter:ci
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:8080/health >/dev/null && break
+            sleep 1
+          done
+          if ! ./scripts/smoke.sh http://localhost:8080 "$VERSION"; then
+            echo "::group::container logs"
+            docker logs rl
+            echo "::endgroup::"
+            exit 1
+          fi
+      - name: Stop test container
+        if: always()
+        run: docker rm -f rl || true
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # On pull requests this still builds both architectures (proving the
+      # arm64 build works) but pushes nothing.
+      - name: Build and push (linux/amd64, linux/arm64)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.ver.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+      - name: Summary
+        if: github.event_name != 'pull_request'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "### Published image"
+            echo
+            echo '```'
+            echo "$TAGS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: dist
+      - name: Checksums
+        run: cd dist && sha256sum ratelimiter_* > checksums.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}"
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "Container image: \`${image}\`" \
+            $flags

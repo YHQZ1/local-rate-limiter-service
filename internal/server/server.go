@@ -196,7 +196,10 @@ func routeLabel(pattern string) string {
 		return "unmatched"
 	}
 	if i := strings.IndexByte(pattern, ' '); i >= 0 {
-		return pattern[i+1:]
+		pattern = pattern[i+1:]
+	}
+	if pattern == "/{$}" { // ServeMux syntax for "exactly /"
+		return "/"
 	}
 	return pattern
 }

@@ -202,6 +202,11 @@ func TestUI(t *testing.T) {
 		t.Errorf("GET /assets/inter.woff2: %d %q (%d bytes)", rec.Code,
 			rec.Header().Get("Content-Type"), rec.Body.Len())
 	}
+	// The UI route must show up as "/", not as ServeMux's internal "/{$}".
+	if out := h.do("GET", "/metrics", "").Body.String(); !strings.Contains(out, `path="/"`) ||
+		strings.Contains(out, "{$}") {
+		t.Error(`UI route should be labelled path="/" in metrics`)
+	}
 	// "/" must not act as a catch-all: other unknown paths stay 404.
 	if rec := h.do("GET", "/index.html", ""); rec.Code != 404 {
 		t.Errorf("GET /index.html: %d, want 404", rec.Code)

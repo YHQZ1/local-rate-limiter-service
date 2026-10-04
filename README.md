@@ -1,5 +1,7 @@
 # ratelimiter
 
+[![CI/CD](https://github.com/YHQZ1/local-rate-limiter-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/YHQZ1/local-rate-limiter-service/actions/workflows/ci-cd.yml)
+
 A small HTTP service that answers one question: **"may this caller do this right now?"**
 
 Other services call `POST /check` with a key (a user ID, API key, IP address, ...). The service keeps a [token bucket](https://en.wikipedia.org/wiki/Token_bucket) per key and replies allow or deny. Written in Go with the standard library plus the Prometheus client.
@@ -116,6 +118,41 @@ make race    # same, with the race detector
 make bench   # limiter micro-benchmark
 make vet fmt
 ```
+
+## CI/CD
+
+GitHub Actions, defined in [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml).
+
+![Pipeline diagram](docs/pipeline.png)
+
+(Vector version: [`docs/pipeline.svg`](docs/pipeline.svg).)
+
+| Stage | Runs on | What it does |
+| ----- | ------- | ------------ |
+| Lint | every event | `gofmt` check, `go vet`, `go mod tidy -diff` |
+| Test | every event | `go test -race` with coverage (summary on the run page, `coverage.out` as an artifact) |
+| Build | after Lint + Test | Static `linux/amd64` and `linux/arm64` binaries with the version stamped in; uploaded as artifacts |
+| Container image | after Lint + Test | Builds the image, runs it and smoke-tests it with `scripts/smoke.sh`, then builds both architectures. Pushes to GHCR on `main` and tags only, never on pull requests |
+| GitHub release | tags `v*` only | Creates a release with the binaries, `checksums.txt` and the image reference |
+
+Image tags on `ghcr.io/yhqz1/local-rate-limiter-service`: `sha-<short>` for every push, `main` and `latest` for the default branch, and `1.2.3` / `1.2` for release tags. The version baked into the binary (`/version`) comes from `git describe`, so a tagged build reports its tag.
+
+**Cut a release**
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+**Run the same checks locally**
+
+```bash
+make vet race                       # lint + tests
+docker build -t ratelimiter:dev .   # image
+docker run -d -p 8080:8080 -e RATE_PER_SEC=1 -e BURST=3 ratelimiter:dev
+scripts/smoke.sh http://localhost:8080
+```
+
+Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets need to be configured. A newly published GHCR package starts private. To pull it without logging in (for example from a local Kubernetes cluster), make it public under the package's settings on GitHub.
 
 ## Design notes and limits
 
