@@ -1,0 +1,19 @@
+# Runtime configuration, injected as environment variables.
+# Pods read this once at start-up, so after editing it run:
+#   kubectl -n ratelimiter rollout restart deployment/ratelimiter
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimiter-config
+  namespace: ratelimiter
+  labels:
+    app.kubernetes.io/name: ratelimiter
+    app.kubernetes.io/part-of: ratelimiter
+data:
+  PORT: "8080"
+  RATE_PER_SEC: "5"
+  BURST: "10"
+  MAX_KEYS: "100000"
+  CLEANUP_INTERVAL: "30s"
+  SHUTDOWN_TIMEOUT: "10s"
+  LOG_LEVEL: "info"

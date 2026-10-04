@@ -154,6 +154,10 @@ scripts/smoke.sh http://localhost:8080
 
 Pushing to the registry uses the workflow's built-in `GITHUB_TOKEN`; no secrets need to be configured. The package is linked to this repository through the image's OCI source label and, because the repository is public, it can be pulled anonymously. If you ever make the repository private, pulls will need credentials (for Kubernetes, an `imagePullSecret`).
 
+## Docker and Kubernetes
+
+The image is built by the `Dockerfile` (static binary on distroless, non-root, about 18 MB) and published by CI. [`k8s/`](k8s/) has the manifests (Namespace, ConfigMap, Deployment, Service) plus a walkthrough of a zero-downtime rolling update, a bad release that Kubernetes refuses to complete, and rollbacks, with measured results. See [`k8s/README.md`](k8s/README.md).
+
 ## Configuration management (Ansible)
 
 [`ansible/`](ansible/) holds a playbook and inventory that configure a bare Ubuntu server for this service: packages, a service user, config files, a sandboxed systemd unit, checksum-verified release installs and instant rollback. See [`ansible/README.md`](ansible/README.md) for how to try it against a local lab server.

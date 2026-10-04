@@ -1,0 +1,35 @@
+# Throw-away client that hits the Service ~20 times a second and prints one
+# "<time> <http status>" line per request. Used to prove a rollout drops no
+# requests: 200 = allowed, 429 = rate limited (both fine), anything else
+# (000 = connection failure, 5xx) would be an outage.
+#
+#   kubectl apply -f k8s/demo/loadgen.yaml
+#   kubectl -n ratelimiter logs loadgen | awk '{print $2}' | sort | uniq -c
+#   kubectl -n ratelimiter delete pod loadgen
+apiVersion: v1
+kind: Pod
+metadata:
+  name: loadgen
+  namespace: ratelimiter
+  labels:
+    app.kubernetes.io/name: loadgen
+spec:
+  restartPolicy: Never
+  containers:
+    - name: loadgen
+      image: curlimages/curl:8.22.0
+      command: ["sh", "-c"]
+      args:
+        - |
+          i=0
+          while true; do
+            i=$((i + 1))
+            code=$(curl -s -o /dev/null -m 2 -w '%{http_code}' -X POST \
+              http://ratelimiter.ratelimiter.svc/check -d "{\"key\":\"load-$((i % 20))\"}")
+            echo "$(date +%T) $code"
+            sleep 0.05
+          done
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi

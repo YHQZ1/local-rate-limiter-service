@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratelimiter
+  namespace: ratelimiter
+  labels:
+    app.kubernetes.io/name: ratelimiter
+    app.kubernetes.io/part-of: ratelimiter
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5 # old ReplicaSets kept for `kubectl rollout undo`
+
+  # Rolling update: bring up one extra pod, wait until it is Ready, only then
+  # retire an old one. maxUnavailable 0 means capacity never drops below 3.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 5 # a new pod must stay Ready this long before it counts
+  progressDeadlineSeconds: 60 # a rollout making no progress is reported as failed
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ratelimiter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ratelimiter
+        app.kubernetes.io/part-of: ratelimiter
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ratelimiter
+          # The tag is the release. Change it (kubectl set image, or edit this
+          # line and re-apply) to roll out a new version.
+          image: ghcr.io/yhqz1/local-rate-limiter-service:sha-8424ac9
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: ratelimiter-config
+          # Ready = may receive traffic. Failing it removes the pod from the
+          # Service and stalls a rollout.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 1
+            failureThreshold: 3
+          # Alive = not wedged. Failing it restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          # Pause before SIGTERM so the Service has stopped sending this pod new
+          # connections. (Native sleep action: the image has no shell or sleep.)
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          securityContext:
+            runAsUser: 65532 # the image's "nonroot" user
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
